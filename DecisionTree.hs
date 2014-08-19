@@ -27,13 +27,16 @@ module DecisionTree(
     baselineAccuracy,
     getAttribute,
     getCategory,
-    weightedPurity
+    weightedPurity,
+    parseDecisionTreeFile
 ) where
 
 import Data.List
 import Data.Function
 
+--A category is just the name of the category as a String
 type Category = String
+--An Attribute is 
 type Attribute = String
 
 data Instance = Instance Category [(Attribute, Bool)] deriving (Show)
@@ -48,15 +51,15 @@ decisionTreeShow indent (Node att (b1, leftTree) (b2, rightTree)) = (showSubTree
 instance Show DecisionTree where
     show = decisionTreeShow ""
 
---Working as intended
+--Gets the value of an attribute from a supplied instance
 getAttribute :: Instance -> Attribute -> Bool
 getAttribute (Instance _ list) att = snd . head . filter ((==) att . fst) $ list
 
---Working
+--Gets the Category of the instance, this is just a helper method
 getCategory :: Instance -> Category
 getCategory (Instance cat _) = cat
 
---Working as intended
+--Computes the purity of a collection of instances based on the 
 computePurity :: [Instance] -> [Category] -> Float
 computePurity instances categories = foldl (*) 1 . map (\l -> l/instLength) $ categoryCounts
     where categoryCounts = map (fromIntegral . length) . map (\cat -> filter (\a -> getCategory a == cat) instances) $ categories
@@ -66,18 +69,21 @@ computePurity instances categories = foldl (*) 1 . map (\l -> l/instLength) $ ca
 baselineAccuracy :: [Instance] -> (Category, Float)
 baselineAccuracy instances = fmap (\a -> a / (fromIntegral (length instances))) . head . sortBy ((flip compare) `on` snd) . map (\l@((Instance x _):_) -> (x, fromIntegral (length l))) . groupBy ((==) `on` getCategory) . sortBy (compare `on` getCategory) $ instances
 
---Working
+--Divides the length of two lists
 divideLength :: [a] -> [a] -> Float
 divideLength = (/) `on` (fromIntegral . length)
 
---Working
+--Given a list of instances and the attribute that we are looking for it returns all the instances
+--that have that attribute as true
 trueInstances :: [Instance] -> Attribute -> [Instance]
 trueInstances instances attribute = filter (flip getAttribute attribute) instances
 
---Working
+--Given a list of instances and the attribute that we are looking for it returns all the instances 
+--that have that attribute as false
 falseInstances :: [Instance] -> Attribute -> [Instance]
 falseInstances instances attribute = filter (not . flip getAttribute attribute) instances
 
+--Computes the weighted purite of a collection of attributes
 weightedPurity :: [Instance] -> Attribute -> [Category] -> Float
 weightedPurity instances attribute categories = weightedPurityTrue + weightedPurityFalse
     where instTrue = trueInstances instances attribute     --working
@@ -112,11 +118,22 @@ classify (Node att (_, leftTree) (_, rightTree)) inst = if (getAttribute inst at
 
 {-
 
-    Parsing stuff, that wont be needed in the module....
+This is code that can be used to parse a decision tree and create one, however this will only work if the files
+for both the test and training instances follow the patter
 
+category1 category2 ... categoryN
+attribute1 attribute2 ... attributeM
+categoryValue attributeValue1 attributeValue2 ... attributeValueM
+  .
+  .
+  .
+
+Where each instance has its own line  
+
+-}
 --Working
-parseDecisionTree :: String -> ([Category], [Attribute], [Instance])
-parseDecisionTree s = (words categoryLine, attributes, map (flip parseInstance attributes) instances)
+parseDecisionTreeFile :: String -> ([Category], [Attribute], [Instance])
+parseDecisionTreeFile s = (words categoryLine, attributes, map (flip parseInstance attributes) instances)
     where (categoryLine:attributeLine:instances) = lines s
           attributes = words attributeLine 
 
@@ -132,8 +149,8 @@ parseInstance s attributes = Instance cat $ zip attributes . map parseBool $ att
 main :: IO ()
 main = do 
     (trainingFile:testFile:_) <- getArgs
-    (categories, attributes, instances) <- parseDecisionTree <$> readFile trainingFile
-    (_, _, testInst) <- parseDecisionTree <$> readFile testFile
+    (categories, attributes, instances) <- parseDecisionTreeFile <$> readFile trainingFile
+    (_, _, testInst) <- parseDecisionTreeFile <$> readFile testFile
     let tree = buildTree instances attributes categories
         classifications = map (classify tree) testInst
         (_, baseline) = baselineAccuracy instances 
@@ -143,4 +160,4 @@ main = do
     putStrLn $ "Baseline Accuracy is: "++(show baseline)
     putStrLn $ "The percentage that were classified correctly is: "++(show percentCorrect)
     mapM_ (\(inst, cl) -> putStrLn ("Test Instance: "++(show inst)++" classified as "++cl)) $ zip testInst classifications
--}   
+  
