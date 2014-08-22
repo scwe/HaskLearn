@@ -1,4 +1,4 @@
-module NaiveBayes(
+module HaskLearn.NaiveBayes(
     Feature,
     Class,
     Instance (Instance),
@@ -12,7 +12,7 @@ module NaiveBayes(
     classify,
     normalizeProb
     ) where
-    
+
 import qualified Data.Set as Set
 import qualified Data.List as List
 import Data.Function
